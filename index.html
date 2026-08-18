@@ -471,11 +471,16 @@ const shinsaRows = [
   ['매출원가','매출원가',''],
   ['매출총이익','매출총이익','font-weight:700;'],
   ['판매비와관리비','판관비',''],
-  ['영업이익','영업이익','font-weight:700; color:var(--accent);'],
+  ['영업이익','영업이익','font-weight:700;'],
 ];
 shinsaRows.forEach(([label,key,style])=>{
+  const isOpProfit = key === '영업이익';
+  const cellStyle = v => isOpProfit ? `${style} color:${v<0 ? 'var(--red)' : 'var(--accent)'};` : style;
   const total = SHINSA[key].reduce((s,v)=>s+v,0);
-  sHtml2 += `<tr><td class="left" style="${style}">${label}</td><td style="${style} background:var(--panel2);">${fmt(total)}</td>` + SHINSA[key].map(v=>`<td style="${style}">${fmt(v)}</td>`).join('') + '</tr>';
+  sHtml2 += `<tr><td class="left" style="${style}">${label}</td><td class="${(!isOpProfit && total<0)?'amt-neg':''}" style="${cellStyle(total)} background:var(--panel2);">${fmt(total)}</td>` + SHINSA[key].map(v=>{
+    const cls = (!isOpProfit && v < 0) ? 'amt-neg' : '';
+    return `<td class="${cls}" style="${cellStyle(v)}">${fmt(v)}</td>`;
+  }).join('') + '</tr>';
 });
 sHtml2 += '</tbody>';
 document.getElementById('shinsaTable').innerHTML = sHtml2;
@@ -563,6 +568,12 @@ const GRAND_TOTAL = {
 
 const BRANCH_PL_MONTHS = ['1월','2월','3월','4월','5월','6월','7월'];
 
+function toThousand(bd){
+  const out = {};
+  Object.keys(bd).forEach(k=>{ out[k] = bd[k].map(v=>Math.round(v/1000)); });
+  return out;
+}
+
 function renderPLPanel(container, label, unitNote, bd, isTotal, safeKey){
   const panel = document.createElement('div');
   panel.className = 'panel';
@@ -584,13 +595,15 @@ function renderPLPanel(container, label, unitNote, bd, isTotal, safeKey){
     ['매출원가','매출원가',''],
     ['매출총이익','매출총이익','font-weight:700;'],
     ['판매비와관리비','판관비',''],
-    ['영업이익','영업이익','font-weight:700; color:var(--accent);'],
+    ['영업이익','영업이익','font-weight:700;'],
   ];
   rows.forEach(([rl,key,style])=>{
+    const isOpProfit = key === '영업이익';
+    const cellStyle = v => isOpProfit ? `${style} color:${v<0 ? 'var(--red)' : 'var(--accent)'};` : style;
     const total = bd[key].reduce((s,v)=>s+v,0);
-    bHtml += `<tr><td class="left" style="${style}">${rl}</td><td class="${total<0?'amt-neg':''}" style="${style} background:var(--panel2);">${fmt(total)}</td>` + bd[key].map(v=>{
-      const cls = v < 0 ? 'amt-neg' : '';
-      return `<td class="${cls}" style="${style}">${fmt(v)}</td>`;
+    bHtml += `<tr><td class="left" style="${style}">${rl}</td><td class="${(!isOpProfit && total<0)?'amt-neg':''}" style="${cellStyle(total)} background:var(--panel2);">${fmt(total)}</td>` + bd[key].map(v=>{
+      const cls = (!isOpProfit && v < 0) ? 'amt-neg' : '';
+      return `<td class="${cls}" style="${cellStyle(v)}">${fmt(v)}</td>`;
     }).join('') + `</tr>`;
   });
   bHtml += '</tbody>';
@@ -617,26 +630,26 @@ function renderPLPanel(container, label, unitNote, bd, isTotal, safeKey){
       layout:{padding:{top:20}},
       scales:{
         x:{ticks:{color:'#6b7280'}, grid:{display:false}},
-        y:{ticks:{color:'#6b7280', callback:v=>(v/10000)+'만'}, grid:{color:'#eef0f4', borderDash:[3,3]}}
+        y:{ticks:{color:'#6b7280', callback:v=>(v/1000)+'백만'}, grid:{color:'#eef0f4', borderDash:[3,3]}}
       }
     },
-    plugins:[valueLabelPlugin(v=>Math.round(v/10000).toLocaleString()+'만')]
+    plugins:[valueLabelPlugin(v=>Math.round(v/1000).toLocaleString()+'백만')]
   });
 }
 
 const container1 = document.getElementById('branchPLContainer');
-renderPLPanel(container1, '(주)필름 (출판)', '(2026년 1~7월, 단위: 원)', BRANCH_PL['(주)필름'], false, 'bpl0');
-renderPLPanel(container1, '개인필름 (출판)', '(2026년 1~7월, 단위: 원)', BRANCH_PL['개인필름'], false, 'bpl1');
-renderPLPanel(container1, '출판 합계 (법인+개인)', '(2026년 1~7월, 단위: 원)', PUBLISH_TOTAL, true, 'bpl2');
-renderPLPanel(container1, '공명 합계 (가로수길 제외)', '(2026년 1~7월, 단위: 원)', GONGMYOUNG_TOTAL, true, 'bpl3');
-renderPLPanel(container1, '공명연남', '(2026년 1~7월, 단위: 원)', BRANCH_PL['공명연남'], false, 'bpl4');
-renderPLPanel(container1, '공명홍대', '(2026년 1~7월, 단위: 원)', BRANCH_PL['공명홍대'], false, 'bpl5');
-renderPLPanel(container1, '공명합정', '(2026년 1~7월, 단위: 원)', BRANCH_PL['공명합정'], false, 'bpl6');
-renderPLPanel(container1, '공명망원', '(2026년 1~7월, 단위: 원)', BRANCH_PL['공명망원'], false, 'bpl7');
-renderPLPanel(container1, '공명마곡', '(2026년 1~7월, 단위: 원)', BRANCH_PL['공명마곡'], false, 'bpl8');
+renderPLPanel(container1, '(주)필름 (출판)', '(2026년 1~7월, 단위: 천원)', toThousand(BRANCH_PL['(주)필름']), false, 'bpl0');
+renderPLPanel(container1, '개인필름 (출판)', '(2026년 1~7월, 단위: 천원)', toThousand(BRANCH_PL['개인필름']), false, 'bpl1');
+renderPLPanel(container1, '출판 합계 (법인+개인)', '(2026년 1~7월, 단위: 천원)', toThousand(PUBLISH_TOTAL), true, 'bpl2');
+renderPLPanel(container1, '공명 합계 (가로수길 제외)', '(2026년 1~7월, 단위: 천원)', toThousand(GONGMYOUNG_TOTAL), true, 'bpl3');
+renderPLPanel(container1, '공명연남', '(2026년 1~7월, 단위: 천원)', toThousand(BRANCH_PL['공명연남']), false, 'bpl4');
+renderPLPanel(container1, '공명홍대', '(2026년 1~7월, 단위: 천원)', toThousand(BRANCH_PL['공명홍대']), false, 'bpl5');
+renderPLPanel(container1, '공명합정', '(2026년 1~7월, 단위: 천원)', toThousand(BRANCH_PL['공명합정']), false, 'bpl6');
+renderPLPanel(container1, '공명망원', '(2026년 1~7월, 단위: 천원)', toThousand(BRANCH_PL['공명망원']), false, 'bpl7');
+renderPLPanel(container1, '공명마곡', '(2026년 1~7월, 단위: 천원)', toThousand(BRANCH_PL['공명마곡']), false, 'bpl8');
 
 const container2 = document.getElementById('branchPLContainer2');
-renderPLPanel(container2, '(주)필름 총합 (법인 출판 + 공명 합, 가로수길 제외)', '(2026년 1~7월, 단위: 원)', GRAND_TOTAL, true, 'bpl9');
+renderPLPanel(container2, '(주)필름 총합 (법인 출판 + 공명 합, 가로수길 제외)', '(2026년 1~7월, 단위: 천원)', toThousand(GRAND_TOTAL), true, 'bpl9');
 </script>
 </body>
 </html>
